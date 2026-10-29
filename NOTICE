@@ -1,0 +1,28 @@
+Chameleon Case Manager
+=======================
+
+This application is a fork of ChameleonUltraGUI and is distributed under the
+GNU General Public License v3.0 (see LICENSE). As a GPL-3.0 work, any binary or
+modified version that is distributed must be accompanied by its complete
+corresponding source code under the same license.
+
+Upstream projects
+-----------------
+- ChameleonUltraGUI — https://github.com/GameTec-live/ChameleonUltraGUI
+  The cross-platform Flutter GUI this fork is based on. GPL-3.0.
+- Chameleon Ultra — https://github.com/RfidResearchGroup/ChameleonUltra
+  Firmware, protocol, and CLI for the Chameleon Ultra/Lite device. GPL-3.0.
+
+Additions in this fork
+----------------------
+- Per-card capture location (geotag) and photos, stored in an on-disk "case
+  folder" alongside a generated Markdown report.
+- Engagement/authorization metadata for traceable, report-ready records.
+- Flipper Zero interoperability: export saved cards to Flipper .nfc (HF:
+  Mifare Classic / Ultralight / NTAG) and .rfid (LF: EM4100 family) files.
+- Shareable self-contained case bundles (.zip) that import on another install.
+
+Intended use
+------------
+This tool is intended for authorized security testing and research only. Every
+captured card should be tied to an engagement scope you are contracted to test.

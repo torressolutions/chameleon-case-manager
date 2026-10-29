@@ -42,7 +42,7 @@ dependencies:
   logger: ^2.8.0
   convert: ^3.1.2
   shared_preferences: ^2.5.5
-  ffigen: ^22.0.0
+  ffigen: ^21.0.0
   dylib: ^0.3.3
   ffi: ^2.2.0
   usb_serial:
@@ -69,6 +69,12 @@ dependencies:
   wakelock_plus: ^1.8.0
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.0
+  # Case-manager additions: geotag, photos, on-disk case folders, sharing.
+  geolocator: ^14.0.0
+  image_picker: ^1.1.2
+  path_provider: ^2.1.5
+  share_plus: ^13.3.1
+
 
 dev_dependencies:
   flutter_test:

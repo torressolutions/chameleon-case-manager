@@ -7,6 +7,7 @@ import 'package:chameleonultragui/gui/menu/dialogs/card/view.dart';
 import 'package:chameleonultragui/gui/menu/dialogs/dictionary/edit.dart';
 import 'package:chameleonultragui/gui/menu/dialogs/dictionary/view.dart';
 import 'package:chameleonultragui/helpers/card_save_converters.dart';
+import 'package:chameleonultragui/helpers/case_store.dart';
 import 'package:chameleonultragui/helpers/definitions.dart';
 import 'package:chameleonultragui/helpers/general.dart';
 import 'package:chameleonultragui/helpers/mifare_classic/general.dart';
@@ -779,6 +780,37 @@ class SavedCardsPageState extends State<SavedCardsPage> {
                                   if (result != null) {
                                     File file = File(result.path!);
                                     var contents = await file.readAsBytes();
+                                    // Case-manager bundle (.zip): card + photos
+                                    // + report. Detected by extension or the PK
+                                    // zip magic bytes before the UTF-8 path.
+                                    final isZip = result.path!
+                                            .toLowerCase()
+                                            .endsWith('.zip') ||
+                                        (contents.length >= 2 &&
+                                            contents[0] == 0x50 &&
+                                            contents[1] == 0x4B);
+                                    if (isZip) {
+                                      try {
+                                        var tags = appState
+                                            .sharedPreferencesProvider
+                                            .getCards();
+                                        var imported =
+                                            await CaseStore.importZip(contents);
+                                        imported.folderId = currentFolderId;
+                                        tags.add(imported);
+                                        appState.sharedPreferencesProvider
+                                            .setCards(tags);
+                                        appState.changesMade();
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(SnackBar(
+                                                  content: Text(
+                                                      'Invalid case bundle: $e')));
+                                        }
+                                      }
+                                      return;
+                                    }
                                     try {
                                       var string =
                                           const Utf8Decoder().convert(contents);

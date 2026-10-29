@@ -1,4 +1,7 @@
 import 'package:chameleonultragui/gui/menu/dialogs/card/edit.dart';
+import 'package:chameleonultragui/gui/menu/dialogs/card/case_details.dart';
+import 'package:chameleonultragui/helpers/card_share.dart';
+import 'package:chameleonultragui/helpers/case_store.dart';
 import 'package:chameleonultragui/gui/menu/dialogs/dictionary/export.dart';
 import 'package:chameleonultragui/gui/menu/pages/dump_editor.dart';
 import 'package:chameleonultragui/helpers/definitions.dart';
@@ -64,6 +67,25 @@ class CardViewMenuState extends State<CardViewMenu> {
 
     setState(() {
       currentSavedCard = updatedCard;
+    });
+  }
+
+  /// Persist a card changed by the case section (location/photos/engagement)
+  /// to storage and refresh its on-disk case folder.
+  void _persistCard(CardSave updated) {
+    var appState = context.read<ChameleonGUIState>();
+    var cards = appState.sharedPreferencesProvider.getCards();
+    for (int i = 0; i < cards.length; i++) {
+      if (cards[i].id == updated.id) {
+        cards[i] = updated;
+        break;
+      }
+    }
+    appState.sharedPreferencesProvider.setCards(cards);
+    appState.changesMade();
+    CaseStore.writeCardFiles(updated); // keep report.md / flipper file current
+    setState(() {
+      currentSavedCard = updated;
     });
   }
 
@@ -236,6 +258,10 @@ class CardViewMenuState extends State<CardViewMenu> {
                 ),
               ])
           ],
+          CaseDetailsSection(
+            card: currentSavedCard,
+            onChanged: _persistCard,
+          ),
         ],
       )),
       actions: [
@@ -359,6 +385,13 @@ class CardViewMenuState extends State<CardViewMenu> {
                   }
                 },
                 icon: const Icon(Icons.download_rounded),
+              ),
+              IconButton(
+                tooltip: 'Share / export',
+                onPressed: () async {
+                  await showCaseExportDialog(context, currentSavedCard);
+                },
+                icon: const Icon(Icons.share),
               ),
               IconButton(
                 onPressed: () async {

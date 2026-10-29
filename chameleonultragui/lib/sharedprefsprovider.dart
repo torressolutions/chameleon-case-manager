@@ -192,6 +192,101 @@ class DictionaryFolderBundle {
       });
 }
 
+/// Where a card was captured (Walrus-style geotag). All fields optional so a
+/// card saved without a fix still round-trips.
+class CaptureLocation {
+  final double latitude;
+  final double longitude;
+  final double? accuracy; // metres
+  final String? timestamp; // ISO-8601 UTC
+
+  CaptureLocation({
+    required this.latitude,
+    required this.longitude,
+    this.accuracy,
+    this.timestamp,
+  });
+
+  factory CaptureLocation.import(Map<String, dynamic> data) => CaptureLocation(
+        latitude: (data['latitude'] as num).toDouble(),
+        longitude: (data['longitude'] as num).toDouble(),
+        accuracy: (data['accuracy'] as num?)?.toDouble(),
+        timestamp: data['timestamp'] as String?,
+      );
+
+  Map<String, dynamic> export() => {
+        'latitude': latitude,
+        'longitude': longitude,
+        if (accuracy != null) 'accuracy': accuracy,
+        if (timestamp != null) 'timestamp': timestamp,
+      };
+
+  /// A geo: URI an external map app can open.
+  String get geoUri => 'geo:$latitude,$longitude';
+}
+
+/// A photo (or other media) captured with a card. Bytes live in the on-disk
+/// case folder; only this reference is stored in SharedPreferences.
+class CardMedia {
+  final String filename; // relative to the card's case folder, e.g. photos/1.jpg
+  final String? caption;
+  final String kind; // 'photo' for now
+  final String? capturedAt; // ISO-8601 UTC
+
+  CardMedia({
+    required this.filename,
+    this.caption,
+    this.kind = 'photo',
+    this.capturedAt,
+  });
+
+  factory CardMedia.import(Map<String, dynamic> data) => CardMedia(
+        filename: data['filename'] as String,
+        caption: data['caption'] as String?,
+        kind: (data['kind'] as String?) ?? 'photo',
+        capturedAt: data['capturedAt'] as String?,
+      );
+
+  Map<String, dynamic> export() => {
+        'filename': filename,
+        if (caption != null) 'caption': caption,
+        'kind': kind,
+        if (capturedAt != null) 'capturedAt': capturedAt,
+      };
+}
+
+/// Engagement/authorization metadata so every captured card is tied to the
+/// scope it was collected under — traceability for the report and the tester.
+class Engagement {
+  final String? client;
+  final String? scopeRef; // SOW / engagement reference
+  final String? authorizedBy;
+  final String? notes;
+
+  Engagement({this.client, this.scopeRef, this.authorizedBy, this.notes});
+
+  bool get isEmpty =>
+      (client == null || client!.isEmpty) &&
+      (scopeRef == null || scopeRef!.isEmpty) &&
+      (authorizedBy == null || authorizedBy!.isEmpty) &&
+      (notes == null || notes!.isEmpty);
+
+  factory Engagement.import(Map<String, dynamic> data) => Engagement(
+        client: data['client'] as String?,
+        scopeRef: data['scopeRef'] as String?,
+        authorizedBy: data['authorizedBy'] as String?,
+        notes: data['notes'] as String?,
+      );
+
+  Map<String, dynamic> export() => {
+        if (client != null && client!.isNotEmpty) 'client': client,
+        if (scopeRef != null && scopeRef!.isNotEmpty) 'scopeRef': scopeRef,
+        if (authorizedBy != null && authorizedBy!.isNotEmpty)
+          'authorizedBy': authorizedBy,
+        if (notes != null && notes!.isNotEmpty) 'notes': notes,
+      };
+}
+
 class CardSave {
   String id;
   String uid;
@@ -204,6 +299,12 @@ class CardSave {
   CardSaveExtra extraData;
   Color color;
   String? folderId;
+  // Case-manager additions (all optional; upstream bundles load unchanged).
+  CaptureLocation? location;
+  List<CardMedia> media;
+  Engagement? engagement;
+  String? capturedAt; // ISO-8601 UTC
+  String? capturedBy;
 
   factory CardSave.fromJson(String json) {
     Map<String, dynamic> data = jsonDecode(json);
@@ -222,6 +323,16 @@ class CardSave {
         .map((e) => Uint8List.fromList(List<int>.from(e)))
         .toList();
 
+    final location = data['location'] != null
+        ? CaptureLocation.import(data['location'] as Map<String, dynamic>)
+        : null;
+    final media = (data['media'] as List<dynamic>? ?? [])
+        .map((e) => CardMedia.import(e as Map<String, dynamic>))
+        .toList();
+    final engagement = data['engagement'] != null
+        ? Engagement.import(data['engagement'] as Map<String, dynamic>)
+        : null;
+
     return CardSave(
         id: id,
         uid: uid,
@@ -233,7 +344,12 @@ class CardSave {
         folderId: folderId,
         extraData: extraData,
         ats: Uint8List.fromList(ats),
-        atqa: Uint8List.fromList(atqa));
+        atqa: Uint8List.fromList(atqa),
+        location: location,
+        media: media,
+        engagement: engagement,
+        capturedAt: data['capturedAt'] as String?,
+        capturedBy: data['capturedBy'] as String?);
   }
 
   String toJson() {
@@ -249,6 +365,13 @@ class CardSave {
       'data': data.map((data) => data.toList()).toList(),
       'extra': extraData.export(),
       if (folderId != null) 'folderId': folderId,
+      if (location != null) 'location': location!.export(),
+      if (media.isNotEmpty)
+        'media': media.map((m) => m.export()).toList(),
+      if (engagement != null && !engagement!.isEmpty)
+        'engagement': engagement!.export(),
+      if (capturedAt != null) 'capturedAt': capturedAt,
+      if (capturedBy != null) 'capturedBy': capturedBy,
     });
   }
 
@@ -264,10 +387,16 @@ class CardSave {
     this.color = Colors.deepOrange,
     this.folderId,
     this.data = const [],
+    this.location,
+    List<CardMedia>? media,
+    this.engagement,
+    this.capturedAt,
+    this.capturedBy,
   })  : id = id ?? const Uuid().v4(),
         sak = sak ?? 0,
         atqa = atqa ?? Uint8List(0),
         ats = ats ?? Uint8List(0),
+        media = media ?? [],
         extraData = extraData ?? CardSaveExtra();
 }
 
